@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart Tariff Comparison – Prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#eef2f6;--card:#fff;--ink:#14202e;--mute:#586577;--line:#d6dde6;--accent:#1d4ed8;--night:#4b5fc4;--day:#d9a21b;--peak:#d2452f;--best:#0e8a5f;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1620;--card:#18212d;--ink:#e8edf3;--mute:#93a1b3;--line:#2a3646;--accent:#7aa2ff;--night:#8c9cf0;--day:#e8b83c;--peak:#f0806b;--best:#45c498;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1620;--card:#18212d;--ink:#e8edf3;--mute:#93a1b3;--line:#2a3646;--accent:#7aa2ff;--night:#8c9cf0;--day:#e8b83c;--peak:#f0806b;--best:#45c498;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:880px;margin:0 auto;padding:28px 18px 56px}
+h1{font-size:1.65rem;line-height:1.2;margin:0 0 6px;font-weight:600}
+h2{font-size:1.05rem;margin:0 0 12px;font-weight:600}
+.sub{color:var(--mute);margin:0 0 22px;max-width:62ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+label{display:block;font-size:.9rem;color:var(--mute);margin-bottom:6px}
+select,input[type=range]{width:100%}
+select{font:inherit;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+input[type=range]{accent-color:var(--accent)}
+.val{color:var(--ink);font-weight:600}
+.verdict{font-size:1.08rem;margin:0 0 14px}
+.verdict b{color:var(--best)}
+.row{display:grid;grid-template-columns:130px 1fr 150px;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.bar{height:20px;border-radius:4px;background:var(--line);position:relative;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--accent);border-radius:4px}
+.row.best .bar span{background:var(--best)}
+.cost{text-align:right;font-variant-numeric:tabular-nums}
+.cost small{display:block;color:var(--mute)}
+.name{font-weight:500}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:520px}
+th,td{text-align:left;padding:7px 8px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+th{font-weight:500;color:var(--mute);border-top:0}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.88rem;color:var(--mute);margin-top:8px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+svg{width:100%;height:auto;display:block}
+details{font-size:.93rem;color:var(--mute)}
+summary{cursor:pointer;color:var(--ink);font-weight:500}
+details ul{padding-left:20px;margin:10px 0 0}
+.note{border-left:3px solid var(--day);padding-left:12px;color:var(--mute);font-size:.92rem;margin:0 0 16px}
+@media (max-width:560px){.row{grid-template-columns:1fr;gap:4px}.cost{text-align:left}}
+@media (prefers-reduced-motion:no-preference){.bar span{transition:width .25s ease}}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<h1>Smart tariff comparison</h1>
+<p class="sub">A working prototype that estimates a household’s annual electricity cost under four tariff structures, from its usage level and when it uses power.</p>
+<p class="note">Prototype only. The load profiles are synthetic and the tariff rates are illustrative placeholders, not real supplier prices. The three-band structure (night, day, peak) follows Irish time-of-use design. Do not use for choosing a real tariff.</p>
+
+<section class="card" aria-label="Household inputs">
+<div class="controls">
+<div><label for="kwh">Annual usage (excluding EV): <span class="val" id="kwhv"></span></label><input id="kwh" type="range" min="1500" max="9000" step="100" value="4200"></div>
+<div><label for="prof">When the household uses power</label>
+<select id="prof"><option value="commuter">Out during the day (commuters)</option><option value="home">Home most of the day</option><option value="evening">Evening-heavy family</option></select></div>
+<div><label for="ev">Electric vehicle charging per year</label>
+<select id="ev"><option value="0">None</option><option value="1500">1,500 kWh</option><option value="3000">3,000 kWh</option></select></div>
+<div><label for="evt">EV charging time</label>
+<select id="evt"><option value="night">Overnight (23:00–08:00)</option><option value="evening">After work (18:00–22:00)</option></select></div>
+</div>
+</section>
+
+<section class="card" aria-live="polite">
+<h2>Estimated annual cost</h2>
+<p class="verdict" id="verdict"></p>
+<div id="bars"></div>
+</section>
+
+<section class="card">
+<h2>When the household uses power</h2>
+<svg id="chart" viewBox="0 0 520 150" role="img" aria-label="Hourly electricity use coloured by price band"></svg>
+<div class="legend"><span><i style="background:var(--night)"></i>Night 23:00–08:00</span><span><i style="background:var(--day)"></i>Day 08:00–17:00, 19:00–23:00</span><span><i style="background:var(--peak)"></i>Peak 17:00–19:00</span></div>
+</section>
+
+<section class="card">
+<h2>Consumption by price band and tariff assumptions</h2>
+<div class="scroll"><table id="tbl"></table></div>
+</section>
+
+<section class="card">
+<details>
+<summary>Method and limitations</summary>
+<ul>
+<li>Annual cost = standing charge × 365 + Σ over 24 hours of (hourly kWh × unit rate for that hour’s band). Prices are shown before VAT and levies.</li>
+<li>Hourly use = annual usage × a normalised 24-hour shape per household type, plus EV charging spread evenly over the chosen window. Shapes are stylised, with no seasonal or weekday/weekend variation.</li>
+<li>Tariffs A to D are fictional. Replace the TARIFFS object in the script with current supplier rate cards to test real offers.</li>
+<li>Next steps: load real half-hourly smart-meter data, add seasonality, test sensitivity to rate changes, and validate results against supplier comparison tools.</li>
+</ul>
+</details>
+</section>
+</main>
+<script>
+var TARIFFS=[
+{n:"A: Flat rate",s:0.70,r:{night:0.34,day:0.34,peak:0.34}},
+{n:"B: Day/night",s:0.70,r:{night:0.20,day:0.36,peak:0.36}},
+{n:"C: Smart time-of-use",s:0.72,r:{night:0.18,day:0.35,peak:0.44}},
+{n:"D: EV night saver",s:0.75,r:{night:0.13,day:0.38,peak:0.47}}
+];
+var SHAPES={
+commuter:[1,1,1,1,1,1.5,3,4,3,1.5,1.2,1.2,1.2,1.2,1.3,1.8,3,5,6,5.5,4.5,3.5,2.5,1.5],
+home:[1,1,1,1,1,1.5,2.5,3.5,3.5,3,3,3.2,3.5,3.2,3,3.2,4,5,5.5,5,4,3,2,1.2],
+evening:[1,1,1,1,1,1.2,2.5,3.5,2,1.2,1,1,1.2,1.2,1.5,2.5,4.5,6.5,7,6,5,3.5,2.2,1.3]
+};
+function band(h){return(h>=23||h<8)?"night":(h>=17&&h<19)?"peak":"day"}
+function load(){
+var kwh=+document.getElementById("kwh").value,p=document.getElementById("prof").value,ev=+document.getElementById("ev").value,t=document.getElementById("evt").value;
+var w=SHAPES[p],sum=w.reduce(function(a,b){return a+b},0),L=[],i;
+for(i=0;i<24;i++)L.push(kwh*w[i]/sum);
+var hrs=t==="night"?[23,0,1,2,3,4,5,6,7]:[18,19,20,21];
+if(ev>0)hrs.forEach(function(h){L[h]+=ev/hrs.length});
+return{L:L,total:kwh+ev,kwh:kwh};
+}
+function euro(x){return x.toLocaleString("en-IE",{style:"currency",currency:"EUR",maximumFractionDigits:0})}
+function render(){
+var d=load(),L=d.L,i,shares={night:0,day:0,peak:0};
+document.getElementById("kwhv").textContent=d.kwh.toLocaleString("en-IE")+" kWh";
+L.forEach(function(v,h){shares[band(h)]+=v});
+var res=TARIFFS.map(function(t){var c=t.s*365;L.forEach(function(v,h){c+=v*t.r[band(h)]});return{n:t.n,c:c}});
+var flat=res[0].c,sorted=res.slice().sort(function(a,b){return a.c-b.c}),max=sorted[sorted.length-1].c,best=sorted[0];
+var save=flat-best.c;
+document.getElementById("verdict").innerHTML=best.n===res[0].n?"<b>"+best.n+"</b> is the cheapest option for this household.":"<b>"+best.n+"</b> is cheapest at "+euro(best.c)+" a year, "+euro(save)+" ("+Math.round(save/flat*100)+"%) below the flat rate.";
+var html="";
+sorted.forEach(function(r){var diff=r.c-flat,tag=r.n===res[0].n?"baseline":(diff<0?"−"+euro(-diff):"+"+euro(diff))+" vs flat";
+html+='<div class="row'+(r===best?" best":"")+'"><div class="name">'+r.n+'</div><div class="bar"><span style="width:'+(r.c/max*100).toFixed(1)+'%"></span></div><div class="cost">'+euro(r.c)+'<small>'+tag+'</small></div></div>';});
+document.getElementById("bars").innerHTML=html;
+var mx=Math.max.apply(null,L),svg="",col={night:"var(--night)",day:"var(--day)",peak:"var(--peak)"};
+for(i=0;i<24;i++){var h=L[i]/mx*105,x=14+i*21;svg+='<rect x="'+x+'" y="'+(115-h)+'" width="16" height="'+h+'" rx="2" fill="'+col[band(i)]+'"/>';if(i%3===0)svg+='<text x="'+(x+8)+'" y="135" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">'+(i<10?"0":"")+i+'</text>';}
+document.getElementById("chart").innerHTML=svg;
+var tb='<tr><th>Tariff</th><th>Night rate</th><th>Day rate</th><th>Peak rate</th><th>Standing / day</th></tr>';
+TARIFFS.forEach(function(t){tb+='<tr><td>'+t.n+'</td><td>'+(t.r.night*100).toFixed(0)+'c</td><td>'+(t.r.day*100).toFixed(0)+'c</td><td>'+(t.r.peak*100).toFixed(0)+'c</td><td>€'+t.s.toFixed(2)+'</td></tr>';});
+var tot=d.total;
+tb+='<tr><th>Household share of kWh</th><th>'+Math.round(shares.night/tot*100)+'% night</th><th>'+Math.round(shares.day/tot*100)+'% day</th><th>'+Math.round(shares.peak/tot*100)+'% peak</th><th>'+Math.round(tot).toLocaleString("en-IE")+' kWh total</th></tr>';
+document.getElementById("tbl").innerHTML=tb;
+}
+["kwh","prof","ev","evt"].forEach(function(id){document.getElementById(id).addEventListener("input",render)});
+render();
+</script>
+</body>
+</html>
