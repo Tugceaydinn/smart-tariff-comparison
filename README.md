@@ -2,7 +2,7 @@
 
 A small, self-contained web tool that estimates a household's annual electricity cost under four tariff structures, based on how much power the household uses and when.
 
-**Live demo:** [your GitHub Pages link]
+**Live demo:** (https://github.com/Tugceaydinn/smart-tariff-comparison)
 
 ## What it does
 
@@ -37,4 +37,4 @@ Open `index.html` in a browser. There are no dependencies or build steps.
 
 ## Author
 
-[Your name] · [LinkedIn or email]
+Tuğçe Aydın · tugceaydiinn@hotmail.com
